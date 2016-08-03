@@ -1,0 +1,21 @@
+From 3f87dc2cebe3715d9376bef58b5b13ad91369b6f Mon Sep 17 00:00:00 2001
+From: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+Date: Tue, 12 Jul 2016 21:23:49 +0300
+Subject: [PATCH] arm64:optee: Enable OPTEE for arm64
+
+Signed-off-by: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+---
+ xen/arch/arm/configs/arm64_defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/xen/arch/arm/configs/arm64_defconfig b/xen/arch/arm/configs/arm64_defconfig
+index d91c6c3..ad2e8aa 100644
+--- a/xen/arch/arm/configs/arm64_defconfig
++++ b/xen/arch/arm/configs/arm64_defconfig
+@@ -1 +1,2 @@
+ CONFIG_XSM=y
++CONFIG_OPTEE=y
+\ No newline at end of file
+-- 
+1.9.1
+

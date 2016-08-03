@@ -1,0 +1,27 @@
+From ac4a09f58ffc865b737cbd9f9ec03ab01fdb2438 Mon Sep 17 00:00:00 2001
+From: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+Date: Wed, 11 Nov 2015 13:57:41 +0200
+Subject: [PATCH] arm: passthrough: ignore passthrough PCI devices
+
+Change-Id: Iec2941e6aa6e3fc03e3ecae776e82e85e64986d3
+Signed-off-by: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+---
+ xen/arch/arm/domain_build.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xen/arch/arm/domain_build.c b/xen/arch/arm/domain_build.c
+index c5e617b..ee717cd 100644
+--- a/xen/arch/arm/domain_build.c
++++ b/xen/arch/arm/domain_build.c
+@@ -1268,7 +1268,7 @@ static int map_device_children(struct domain *d,
+ {
+     int ret;
+ 
+-    if ( dt_device_type_is_equal(dev, "pci") )
++    if ( dt_device_type_is_equal(dev, "pci")  && !dt_device_for_passthrough(dev) )
+     {
+         DPRINT("Mapping children of %s to guest\n", dt_node_full_name(dev));
+ 
+-- 
+1.9.1
+

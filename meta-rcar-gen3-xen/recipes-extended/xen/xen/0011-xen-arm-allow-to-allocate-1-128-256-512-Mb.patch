@@ -1,0 +1,67 @@
+From 12e21c0604169bbbc6948478ff1102243449b525 Mon Sep 17 00:00:00 2001
+From: Andrii Tseglytskyi <andrii.tseglytskyi@globallogic.com>
+Date: Mon, 15 Dec 2014 13:53:15 +0200
+Subject: [PATCH] xen/arm: allow to allocate 1/128/256/512 Mb memory chunks
+
+This is done to allow possibility of having 1 to 1 memory mapping chunks
+with size 1/128/256/512 Mb what can sagnificantly decrease time of memory
+allocation and fragmentation for 1-to-1 mapped domains.
+
+Change-Id: I853712f89f049000012e6f17324105dfcd03e37b
+Signed-off-by: Andrii Tseglytskyi <andrii.tseglytskyi@globallogic.com>
+Signed-off-by: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+---
+ tools/libxc/xc_dom_arm.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/tools/libxc/xc_dom_arm.c b/tools/libxc/xc_dom_arm.c
+index aeaba54..5ee8eef 100644
+--- a/tools/libxc/xc_dom_arm.c
++++ b/tools/libxc/xc_dom_arm.c
+@@ -33,7 +33,11 @@
+ #define LPAE_SHIFT 9
+ 
+ #define PFN_4K_SHIFT  (0)
++#define PFN_1M_SHIFT  (PFN_4K_SHIFT + 8)
+ #define PFN_2M_SHIFT  (PFN_4K_SHIFT+LPAE_SHIFT)
++#define PFN_128M_SHIFT  (PFN_2M_SHIFT + 6)
++#define PFN_256M_SHIFT  (PFN_128M_SHIFT + 1)
++#define PFN_512M_SHIFT  (PFN_256M_SHIFT + 1)
+ #define PFN_1G_SHIFT  (PFN_2M_SHIFT+LPAE_SHIFT)
+ #define PFN_512G_SHIFT (PFN_1G_SHIFT+LPAE_SHIFT)
+ 
+@@ -359,11 +363,31 @@ static int populate_guest_memory(struct xc_dom_image *dom,
+         if ( rc < 0 ) break;
+         if ( rc > 0 ) continue;
+ 
++        rc = populate_one_size(dom, PFN_512M_SHIFT,
++                               base_pfn + pfn, &allocsz, extents);
++        if ( rc < 0 ) break;
++        if ( rc > 0 ) continue;
++
++        rc = populate_one_size(dom, PFN_256M_SHIFT,
++                               base_pfn + pfn, &allocsz, extents);
++        if ( rc < 0 ) break;
++        if ( rc > 0 ) continue;
++
++        rc = populate_one_size(dom, PFN_128M_SHIFT,
++                               base_pfn + pfn, &allocsz, extents);
++        if ( rc < 0 ) break;
++        if ( rc > 0 ) continue;
++
+         rc = populate_one_size(dom, PFN_2M_SHIFT,
+                                base_pfn + pfn, &allocsz, extents);
+         if ( rc < 0 ) break;
+         if ( rc > 0 ) continue;
+ 
++        rc = populate_one_size(dom, PFN_1M_SHIFT,
++                               base_pfn + pfn, &allocsz, extents);
++        if ( rc < 0 ) break;
++        if ( rc > 0 ) continue;
++
+         rc = populate_one_size(dom, PFN_4K_SHIFT,
+                                base_pfn + pfn, &allocsz, extents);
+         if ( rc < 0 ) break;
+-- 
+1.9.1
+

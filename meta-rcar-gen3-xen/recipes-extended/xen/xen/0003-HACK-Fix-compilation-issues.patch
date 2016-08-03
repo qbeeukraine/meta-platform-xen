@@ -1,0 +1,26 @@
+From a3d02cb19ee21204230579f61df0d68078154600 Mon Sep 17 00:00:00 2001
+From: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+Date: Fri, 10 Jun 2016 10:54:32 +0300
+Subject: [PATCH 3/3] HACK: Fix compilation issues
+
+Signed-off-by: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+---
+ xen/Rules.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xen/Rules.mk b/xen/Rules.mk
+index 961d533..f2f381b 100644
+--- a/xen/Rules.mk
++++ b/xen/Rules.mk
+@@ -48,7 +48,7 @@ ALL_OBJS-$(CONFIG_X86)   += $(BASEDIR)/crypto/built_in.o
+ CFLAGS += -nostdinc -fno-builtin -fno-common
+ CFLAGS += -Werror -Wredundant-decls -Wno-pointer-arith
+ CFLAGS += -pipe -g -D__XEN__ -include $(BASEDIR)/include/xen/config.h
+-CFLAGS += '-D__OBJECT_FILE__="$@"'
++#CFLAGS += '-D__OBJECT_FILE__="$@"'
+ 
+ ifneq ($(clang),y)
+ # Clang doesn't understand this command line argument, and doesn't appear to
+-- 
+1.9.1
+

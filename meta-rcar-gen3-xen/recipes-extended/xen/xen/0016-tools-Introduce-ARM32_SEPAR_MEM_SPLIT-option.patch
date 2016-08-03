@@ -1,0 +1,567 @@
+From 23db0f02434a6a766257e3c64222177a5e4e6031 Mon Sep 17 00:00:00 2001
+From: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+Date: Mon, 27 Jun 2016 13:33:31 +0300
+Subject: [PATCH] tools: Introduce ARM32_SEPAR_MEM_SPLIT option
+
+This option enables separate memory allocation in
+low & over 4GB address space.
+With this option enabled in domain config files
+"memory" parameter are used to specify domain low memory
+"memory_high" - to specify over 4GB allocated memory
+
+If you didn't specify high memory with this option enabled,
+domain memory will be limited to 4GB (zone 20)
+
+Signed-off-by: Iurii Mykhalskyi <iurii.mykhalskyi@globallogic.com>
+Signed-off-by: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+---
+ tools/helpers/init-xenstore-domain.c |  4 +++
+ tools/libxc/Makefile                 |  2 ++
+ tools/libxc/include/xc_dom.h         | 21 ++++++++++-
+ tools/libxc/xc_dom_arm.c             | 69 ++++++++++++++++++++++++++++++++++--
+ tools/libxc/xc_dom_compat_linux.c    |  4 +++
+ tools/libxc/xc_dom_core.c            | 50 +++++++++++++++++++++-----
+ tools/libxl/Makefile                 |  2 ++
+ tools/libxl/libxl_dom.c              | 22 +++++++++---
+ tools/libxl/libxl_types.idl          |  1 +
+ tools/libxl/xl_cmdimpl.c             |  5 +++
+ xen/Rules.mk                         |  1 +
+ xen/common/memory.c                  | 10 ++++++
+ xen/common/page_alloc.c              | 23 ++++++++++++
+ xen/include/public/memory.h          |  6 ++++
+ xen/include/xen/mm.h                 |  6 ++++
+ 14 files changed, 210 insertions(+), 15 deletions(-)
+
+diff --git a/tools/helpers/init-xenstore-domain.c b/tools/helpers/init-xenstore-domain.c
+index 909542b..0fd4cbd 100644
+--- a/tools/helpers/init-xenstore-domain.c
++++ b/tools/helpers/init-xenstore-domain.c
+@@ -147,7 +147,11 @@ static int build(xc_interface *xch)
+         fprintf(stderr, "xc_dom_parse_image failed\n");
+         goto err;
+     }
++#ifndef ARM32_SEPAR_MEM_SPLIT
+     rv = xc_dom_mem_init(dom, memory);
++#else
++    rv = xc_dom_mem_init(dom, memory, 0);
++#endif
+     if ( rv )
+     {
+         fprintf(stderr, "xc_dom_mem_init failed\n");
+diff --git a/tools/libxc/Makefile b/tools/libxc/Makefile
+index 05264c7..cf1d0e7 100644
+--- a/tools/libxc/Makefile
++++ b/tools/libxc/Makefile
+@@ -110,6 +110,8 @@ CFLAGS   += -D__XEN_TOOLS__
+ # Needed for posix_fadvise64() in xc_linux.c
+ CFLAGS-$(CONFIG_Linux) += -D_GNU_SOURCE
+ 
++CFLAGS-$(ARM32_SEPAR_MEM_SPLIT) += -DARM32_SEPAR_MEM_SPLIT
++
+ CFLAGS	+= $(PTHREAD_CFLAGS)
+ CFLAGS	+= $(CFLAGS_libxentoollog)
+ CFLAGS	+= $(CFLAGS_libxenevtchn)
+diff --git a/tools/libxc/include/xc_dom.h b/tools/libxc/include/xc_dom.h
+index deddada..59f2c34 100644
+--- a/tools/libxc/include/xc_dom.h
++++ b/tools/libxc/include/xc_dom.h
+@@ -147,13 +147,23 @@ struct xc_dom_image {
+      * in rambase_pfn.
+      */
+     xen_pfn_t rambase_pfn;
++#ifndef ARM32_SEPAR_MEM_SPLIT
+     xen_pfn_t total_pages;
++#else
++    xen_pfn_t low_mem_pages;
++    xen_pfn_t high_mem_pages;
++#endif
+     xen_pfn_t p2m_size;         /* number of pfns covered by p2m */
+     struct xc_dom_phys *phys_pages;
+ #if defined (__arm__) || defined(__aarch64__)
+     /*List of memory banks*/
+     struct xc_dom_membank *memory_banks;
++#ifndef ARM32_SEPAR_MEM_SPLIT
+     xen_pfn_t rambank_size[GUEST_RAM_BANKS];
++#else
++    xen_pfn_t rambank_size_low[GUEST_RAM_BANKS];
++    xen_pfn_t rambank_size_high[GUEST_RAM_BANKS];
++#endif
+ #endif
+ 
+     /* malloc memory pool */
+@@ -255,6 +265,11 @@ struct hvm_modlist_entry {
+ } __attribute__((packed));
+ #endif /* x86 */
+ 
++#ifndef ARM32_SEPAR_MEM_SPLIT
++#define XC_DOM_TOTAL_PAGES(dom) ((dom)->total_pages)
++#else
++#define XC_DOM_TOTAL_PAGES(dom) ((dom)->low_mem_pages + (dom)->high_mem_pages)
++#endif
+ /* --- pluggable kernel loader ------------------------------------- */
+ 
+ struct xc_dom_loader {
+@@ -310,7 +325,11 @@ struct xc_dom_image *xc_dom_allocate(xc_interface *xch,
+ void xc_dom_release_phys(struct xc_dom_image *dom);
+ void xc_dom_release(struct xc_dom_image *dom);
+ int xc_dom_rambase_init(struct xc_dom_image *dom, uint64_t rambase);
++#ifndef ARM32_SEPAR_MEM_SPLIT
+ int xc_dom_mem_init(struct xc_dom_image *dom, unsigned int mem_mb);
++#else
++int xc_dom_mem_init(struct xc_dom_image *dom, unsigned int mem_mb_low, unsigned int mem_mb_high);
++#endif
+ 
+ /* Set this larger if you have enormous ramdisks/kernels. Note that
+  * you should trust all kernels not to be maliciously large (e.g. to
+@@ -458,7 +477,7 @@ static inline xen_pfn_t xc_dom_p2m(struct xc_dom_image *dom, xen_pfn_t pfn)
+ {
+     if ( dom->shadow_enabled || xc_dom_feature_translated(dom) )
+         return pfn;
+-    if (pfn < dom->rambase_pfn || pfn >= dom->rambase_pfn + dom->total_pages)
++    if (pfn < dom->rambase_pfn || pfn >= dom->rambase_pfn + XC_DOM_TOTAL_PAGES(dom))
+         return INVALID_MFN;
+     return dom->p2m_host[pfn - dom->rambase_pfn];
+ }
+diff --git a/tools/libxc/xc_dom_arm.c b/tools/libxc/xc_dom_arm.c
+index 1a77dd7..9c06f1a 100644
+--- a/tools/libxc/xc_dom_arm.c
++++ b/tools/libxc/xc_dom_arm.c
+@@ -324,8 +324,19 @@ static int populate_one_size(struct xc_dom_image *dom, int pfn_shift,
+     for ( i = 0 ; i < count ; i ++ )
+         extents[i] = base_pfn + (i<<pfn_shift);
+ 
++#ifdef ARM32_SEPAR_MEM_SPLIT
++	if (base_pfn < 0x100000) { /* base_pfn less then 4GB */
++		nr = xc_domain_populate_physmap(dom->xch, dom->guest_domid, count,
++									pfn_shift, XENMEMF_only_low_mem, extents);
++	} else {
++		nr = xc_domain_populate_physmap(dom->xch, dom->guest_domid, count,
++									pfn_shift, XENMEMF_only_high_mem, extents);
++	}
++#else
+     nr = xc_domain_populate_physmap(dom->xch, dom->guest_domid, count,
+                                     pfn_shift, 0, extents);
++#endif
++
+     if ( nr <= 0 ) return nr;
+     DOMPRINTF("%s: populated %#x/%#x entries with shift %d",
+               __FUNCTION__, nr, count, pfn_shift);
+@@ -513,7 +520,7 @@ static void fixup_dom_memories(struct xc_dom_image *dom, uint64_t *base)
+     curr->count = aligned_size >> XC_PAGE_SHIFT;
+ 
+     base[0] = aligned_start;
+-    dom->rambank_size[0] = (uint64_t)curr->count;
++    dom->rambank_size_low[0] = (uint64_t)curr->count;
+     dom->kernel_seg.vstart = base[0] + zimage->text_offset;
+     dom->kernel_seg.vend = dom->kernel_seg.vstart + dom->kernel_size;
+     dom->parms.virt_entry = dom->kernel_seg.vstart;
+@@ -532,7 +543,11 @@ static int meminit(struct xc_dom_image *dom)
+     xen_pfn_t pfn;
+     uint64_t modbase;
+ 
++#ifndef ARM32_SEPAR_MEM_SPLIT
+     uint64_t ramsize = (uint64_t)dom->total_pages << XC_PAGE_SHIFT;
++#else
++    uint64_t ramsize = (uint64_t)dom->low_mem_pages << XC_PAGE_SHIFT;
++#endif
+ 
+     uint64_t bankbase[] = GUEST_RAM_BANK_BASES;
+     const uint64_t bankmax[] = GUEST_RAM_BANK_SIZES;
+@@ -586,12 +601,41 @@ static int meminit(struct xc_dom_image *dom)
+ 
+         p2m_size = 0x80000/*( bankbase[i] + banksize - bankbase[0] ) >> XC_PAGE_SHIFT*/;
+ 
++#ifndef ARM32_SEPAR_MEM_SPLIT
+         dom->rambank_size[i] = banksize >> XC_PAGE_SHIFT;
++#else
++        dom->rambank_size_low[i] = banksize >> XC_PAGE_SHIFT;
++#endif
+     }
+ 
++#ifndef ARM32_SEPAR_MEM_SPLIT
+     assert(dom->rambank_size[0] != 0);
++#else
++    assert(dom->rambank_size_low[0] != 0);
++#endif
++
+     assert(ramsize == 0); /* Too much RAM is rejected above */
+ 
++#ifdef ARM32_SEPAR_MEM_SPLIT
++	ramsize = (uint64_t)dom->high_mem_pages << XC_PAGE_SHIFT;
++
++	if (ramsize) {
++		for ( i = 0; ramsize && i < GUEST_RAM_BANKS; i++ )
++		{
++			uint64_t banksize = ramsize > bankmax[i] ? bankmax[i] : ramsize;
++
++			ramsize -= banksize;
++			p2m_size += ( bankbase[1] + banksize - bankbase[1] ) >> XC_PAGE_SHIFT;
++
++			dom->rambank_size_high[i] = banksize >> XC_PAGE_SHIFT;
++			DOMPRINTF("%s: rambank_size_high: %"PRIx64, __FUNCTION__, dom->rambank_size_high[i]);
++		}
++
++		assert(ramsize == 0);
++		assert(dom->rambank_size_high[0] != 0);
++	}
++#endif
++
+     dom->p2m_size = p2m_size;
+     dom->p2m_host = xc_dom_malloc(dom, sizeof(xen_pfn_t) * p2m_size);
+     if ( dom->p2m_host == NULL )
+@@ -600,6 +644,7 @@ static int meminit(struct xc_dom_image *dom)
+         dom->p2m_host[pfn] = INVALID_PFN;
+ 
+     /* setup initial p2m and allocate guest memory */
++#ifndef ARM32_SEPAR_MEM_SPLIT
+     for ( i = 0; i < GUEST_RAM_BANKS && dom->rambank_size[i]; i++ )
+     {
+         if ((rc = populate_guest_memory(dom,
+@@ -607,7 +652,23 @@ static int meminit(struct xc_dom_image *dom)
+                                         dom->rambank_size[i])))
+             return rc;
+     }
+-
++#else
++	for ( i = 0; i < GUEST_RAM_BANKS && dom->rambank_size_low[i]; i++ )
++	{
++		if ((rc = populate_guest_memory(dom,
++										bankbase[i] >> XC_PAGE_SHIFT,
++										dom->rambank_size_low[i])))
++			return rc;
++	}
++
++	for ( i = 0; i < GUEST_RAM_BANKS && dom->rambank_size_high[i]; i++ )
++	{
++		if ((rc = populate_guest_memory(dom,
++										bankbase[1] >> XC_PAGE_SHIFT,
++										dom->rambank_size_high[i])))
++			return rc;
++	}
++#endif
+     optimize_memory_banks(dom, bankbase);
+ 
+     ram128mb = bankbase[0] + (128<<20);
+@@ -621,7 +682,11 @@ static int meminit(struct xc_dom_image *dom)
+      * If changing this then consider
+      * xen/arch/arm/kernel.c:place_modules as well.
+      */
++#ifndef ARM32_SEPAR_MEM_SPLIT
+     bank0end = bankbase[0] + ((uint64_t)dom->rambank_size[0] << XC_PAGE_SHIFT);
++#else
++    bank0end = bankbase[0] + ((uint64_t)dom->rambank_size_low[0] << XC_PAGE_SHIFT);
++#endif
+ 
+     if ( bank0end >= ram128mb + modsize && kernend < ram128mb )
+         modbase = ram128mb;
+diff --git a/tools/libxc/xc_dom_compat_linux.c b/tools/libxc/xc_dom_compat_linux.c
+index c922c61..db5f792 100644
+--- a/tools/libxc/xc_dom_compat_linux.c
++++ b/tools/libxc/xc_dom_compat_linux.c
+@@ -67,7 +67,11 @@ int xc_linux_build(xc_interface *xch, uint32_t domid,
+         goto out;
+     if ( (rc = xc_dom_parse_image(dom)) != 0 )
+         goto out;
++#ifndef ARM32_SEPAR_MEM_SPLIT
+     if ( (rc = xc_dom_mem_init(dom, mem_mb)) != 0 )
++#else
++    if ( (rc = xc_dom_mem_init(dom, mem_mb, 0)) != 0 )
++#endif
+         goto out;
+     if ( (rc = xc_dom_boot_mem_init(dom)) != 0 )
+         goto out;
+diff --git a/tools/libxc/xc_dom_core.c b/tools/libxc/xc_dom_core.c
+index 076dc4f..532081a 100644
+--- a/tools/libxc/xc_dom_core.c
++++ b/tools/libxc/xc_dom_core.c
+@@ -444,12 +444,12 @@ void *xc_dom_pfn_to_ptr_retcount(struct xc_dom_image *dom, xen_pfn_t pfn,
+     *count_out = 0;
+ 
+     offset = pfn - dom->rambase_pfn;
+-    if ( offset > dom->total_pages || /* multiple checks to avoid overflows */
+-         count > dom->total_pages ||
+-         offset > dom->total_pages - count )
++    if ( offset > XC_DOM_TOTAL_PAGES(dom) || /* multiple checks to avoid overflows */
++         count > XC_DOM_TOTAL_PAGES(dom) ||
++         offset > XC_DOM_TOTAL_PAGES(dom) - count )
+     {
+         DOMPRINTF("%s: pfn %"PRI_xen_pfn" out of range (0x%" PRIpfn " > 0x%" PRIpfn ")",
+-                  __FUNCTION__, pfn, offset, dom->total_pages);
++                  __FUNCTION__, pfn, offset, XC_DOM_TOTAL_PAGES(dom));
+         return NULL;
+     }
+ 
+@@ -547,14 +547,14 @@ static int xc_dom_chk_alloc_pages(struct xc_dom_image *dom, char *name,
+ {
+     unsigned int page_size = XC_DOM_PAGE_SIZE(dom);
+ 
+-    if ( pages > dom->total_pages || /* multiple test avoids overflow probs */
+-         dom->pfn_alloc_end - dom->rambase_pfn > dom->total_pages ||
+-         pages > dom->total_pages - dom->pfn_alloc_end + dom->rambase_pfn )
++    if ( pages > XC_DOM_TOTAL_PAGES(dom) || /* multiple test avoids overflow probs */
++         dom->pfn_alloc_end - dom->rambase_pfn > XC_DOM_TOTAL_PAGES(dom) ||
++         pages > XC_DOM_TOTAL_PAGES(dom) - dom->pfn_alloc_end + dom->rambase_pfn )
+     {
+         xc_dom_panic(dom->xch, XC_OUT_OF_MEMORY,
+                      "%s: segment %s too large (0x%"PRIpfn" > "
+                      "0x%"PRIpfn" - 0x%"PRIpfn" pages)", __FUNCTION__, name,
+-                     pages, dom->total_pages,
++                     pages, XC_DOM_TOTAL_PAGES(dom),
+                      dom->pfn_alloc_end - dom->rambase_pfn);
+         return -1;
+     }
+@@ -939,6 +939,7 @@ int xc_dom_rambase_init(struct xc_dom_image *dom, uint64_t rambase)
+     return 0;
+ }
+ 
++#ifndef ARM32_SEPAR_MEM_SPLIT
+ int xc_dom_mem_init(struct xc_dom_image *dom, unsigned int mem_mb)
+ {
+     unsigned int page_shift;
+@@ -963,6 +964,39 @@ int xc_dom_mem_init(struct xc_dom_image *dom, unsigned int mem_mb)
+ 
+     return 0;
+ }
++#else
++int xc_dom_mem_init(struct xc_dom_image *dom, unsigned int mem_mb_low, unsigned int mem_mb_high)
++{
++	unsigned int page_shift;
++	xen_pfn_t nr_pages_low;
++	xen_pfn_t nr_pages_high;
++
++    if ( xc_dom_set_arch_hooks(dom) )
++    {
++        xc_dom_panic(dom->xch, XC_INTERNAL_ERROR, "%s: arch hooks not set",
++                     __FUNCTION__);
++        return -1;
++    }
++
++	page_shift = XC_DOM_PAGE_SHIFT(dom);
++	nr_pages_low = mem_mb_low << (20 - page_shift);
++	nr_pages_high = mem_mb_high << (20 - page_shift);
++
++	DOMPRINTF("%s: mem %d MB, low pages 0x%" PRIpfn " pages, %dk each",
++			   __FUNCTION__, mem_mb_low, nr_pages_low, 1 << (page_shift-10));
++
++	DOMPRINTF("%s: mem %d MB, high pages 0x%" PRIpfn " pages, %dk each",
++			   __FUNCTION__, mem_mb_high, nr_pages_high, 1 << (page_shift-10));
++
++	dom->low_mem_pages = nr_pages_low;
++	dom->high_mem_pages = nr_pages_high;
++
++	DOMPRINTF("%s: Total pages 0x%" PRIpfn,
++			  __FUNCTION__, XC_DOM_TOTAL_PAGES(dom));
++
++	return 0;
++}
++#endif
+ 
+ int xc_dom_update_guest_p2m(struct xc_dom_image *dom)
+ {
+diff --git a/tools/libxl/Makefile b/tools/libxl/Makefile
+index defeb40..c9efbee 100644
+--- a/tools/libxl/Makefile
++++ b/tools/libxl/Makefile
+@@ -38,6 +38,8 @@ CFLAGS_LIBXL += -Wshadow
+ 
+ LIBXL_LIBS-$(CONFIG_ARM) += -lfdt
+ 
++CFLAGS-$(ARM32_SEPAR_MEM_SPLIT) += -DARM32_SEPAR_MEM_SPLIT
++
+ CFLAGS += $(PTHREAD_CFLAGS)
+ LDFLAGS += $(PTHREAD_LDFLAGS)
+ LIBXL_LIBS += $(PTHREAD_LIBS)
+diff --git a/tools/libxl/libxl_dom.c b/tools/libxl/libxl_dom.c
+index 805774f..2c6d58f 100644
+--- a/tools/libxl/libxl_dom.c
++++ b/tools/libxl/libxl_dom.c
+@@ -405,8 +405,11 @@ int libxl__build_pre(libxl__gc *gc, uint32_t domid,
+             }
+         }
+     }
+-
++#ifndef ARM32_SEPAR_MEM_SPLIT
+     if (xc_domain_setmaxmem(ctx->xch, domid, info->target_memkb +
++#else
++    if (xc_domain_setmaxmem(ctx->xch, domid, info->target_memkb + info->target_memkb_high +
++#endif
+         LIBXL_MAXMEM_CONSTANT) < 0) {
+         LOGE(ERROR, "Couldn't set max memory");
+         return ERROR_FAIL;
+@@ -524,10 +527,17 @@ int libxl__build_post(libxl__gc *gc, uint32_t domid,
+ 
+     ents = libxl__calloc(gc, 12 + (info->max_vcpus * 2) + 2, sizeof(char *));
+     ents[0] = "memory/static-max";
+-    ents[1] = GCSPRINTF("%"PRId64, info->max_memkb);
++    ents[1] = GCSPRINTF("%"PRId64, info->max_memkb
++#ifdef ARM32_SEPAR_MEM_SPLIT
++                        + info->target_memkb_high
++#endif
++    );
+     ents[2] = "memory/target";
+-    ents[3] = GCSPRINTF("%"PRId64, info->target_memkb -
+-                        libxl__get_targetmem_fudge(gc, info));
++    ents[3] = GCSPRINTF("%"PRId64, info->target_memkb
++#ifdef ARM32_SEPAR_MEM_SPLIT
++                        + info->target_memkb_high
++#endif
++                        - libxl__get_targetmem_fudge(gc, info));
+     ents[4] = "memory/videoram";
+     ents[5] = GCSPRINTF("%"PRId64, info->video_memkb);
+     ents[6] = "domid";
+@@ -636,7 +646,11 @@ static int libxl__build_dom(libxl__gc *gc, uint32_t domid,
+ 
+     mem_kb = dom->container_type == XC_DOM_HVM_CONTAINER ?
+              (info->max_memkb - info->video_memkb) : info->target_memkb;
++#ifndef ARM32_SEPAR_MEM_SPLIT
+     if ( (ret = xc_dom_mem_init(dom, mem_kb / 1024)) != 0 ) {
++#else
++    if ( (ret = xc_dom_mem_init(dom, mem_kb / 1024, info->target_memkb_high / 1024)) != 0 ) {
++#endif
+         LOGE(ERROR, "xc_dom_mem_init failed");
+         goto out;
+     }
+diff --git a/tools/libxl/libxl_types.idl b/tools/libxl/libxl_types.idl
+index 2e5611c..7605f24 100644
+--- a/tools/libxl/libxl_types.idl
++++ b/tools/libxl/libxl_types.idl
+@@ -458,6 +458,7 @@ libxl_domain_build_info = Struct("domain_build_info",[
+     ("tsc_mode",        libxl_tsc_mode),
+     ("max_memkb",       MemKB),
+     ("target_memkb",    MemKB),
++    ("target_memkb_high",  MemKB, {'init_val': '0'}),
+     ("video_memkb",     MemKB),
+     ("shadow_memkb",    MemKB),
+     ("rtc_timeoffset",  uint32),
+diff --git a/tools/libxl/xl_cmdimpl.c b/tools/libxl/xl_cmdimpl.c
+index 87c20e5..0aff64b 100644
+--- a/tools/libxl/xl_cmdimpl.c
++++ b/tools/libxl/xl_cmdimpl.c
+@@ -1413,6 +1413,11 @@ static void parse_config_data(const char *config_source,
+     if (!xlu_cfg_get_long (config, "memory", &l, 0))
+         b_info->target_memkb = l * 1024;
+ 
++#ifdef ARM32_SEPAR_MEM_SPLIT
++	if (!xlu_cfg_get_long (config, "memory_high", &l, 0))
++		b_info->target_memkb_high = l * 1024;
++#endif
++
+     if (!xlu_cfg_get_long (config, "maxmem", &l, 0))
+         b_info->max_memkb = l * 1024;
+ 
+diff --git a/xen/Rules.mk b/xen/Rules.mk
+index f2f381b..9be8d0b 100644
+--- a/xen/Rules.mk
++++ b/xen/Rules.mk
+@@ -63,6 +63,7 @@ CFLAGS-$(perfc)         += -DPERF_COUNTERS
+ CFLAGS-$(perfc_arrays)  += -DPERF_ARRAYS
+ CFLAGS-$(lock_profile)  += -DLOCK_PROFILE
+ CFLAGS-$(frame_pointer) += -fno-omit-frame-pointer -DCONFIG_FRAME_POINTER
++CFLAGS-$(ARM32_SEPAR_MEM_SPLIT) += -DARM32_SEPAR_MEM_SPLIT
+ 
+ ifneq ($(max_phys_irqs),)
+ CFLAGS-y                += -DMAX_PHYS_IRQS=$(max_phys_irqs)
+diff --git a/xen/common/memory.c b/xen/common/memory.c
+index 515c823..8d14362 100644
+--- a/xen/common/memory.c
++++ b/xen/common/memory.c
+@@ -914,6 +914,16 @@ long do_memory_op(unsigned long cmd, XEN_GUEST_HANDLE_PARAM(void) arg)
+              && (reservation.mem_flags & XENMEMF_populate_on_demand) )
+             args.memflags |= MEMF_populate_on_demand;
+ 
++#ifdef ARM32_SEPAR_MEM_SPLIT
++        if ( op == XENMEM_populate_physmap
++                && ( reservation.mem_flags & XENMEMF_only_low_mem) )
++            args.memflags |= MEMF_only_low_mem;
++
++        if ( op == XENMEM_populate_physmap
++                && ( reservation.mem_flags & XENMEMF_only_high_mem) )
++            args.memflags |= MEMF_only_high_mem;
++#endif
++
+         if ( xsm_memory_adjust_reservation(XSM_TARGET, current->domain, d) )
+         {
+             rcu_unlock_domain(d);
+diff --git a/xen/common/page_alloc.c b/xen/common/page_alloc.c
+index 98e30e5..9586ea9 100644
+--- a/xen/common/page_alloc.c
++++ b/xen/common/page_alloc.c
+@@ -1786,6 +1786,9 @@ int assign_pages(
+     return -1;
+ }
+ 
++#ifdef ARM32_SEPAR_MEM_SPLIT
++#define ZONE_4G (20) /* flsl(4G) - PAGE_SHIFT */
++#endif
+ 
+ struct page_info *alloc_domheap_pages(
+     struct domain *d, unsigned int order, unsigned int memflags)
+@@ -1807,11 +1810,31 @@ struct page_info *alloc_domheap_pages(
+     if ( dma_bitsize && ((dma_zone = bits_to_zone(dma_bitsize)) < zone_hi) )
+         pg = alloc_heap_pages(dma_zone + 1, zone_hi, order, memflags, d);
+ 
++#ifdef ARM32_SEPAR_MEM_SPLIT
++	if ( pg == NULL) {
++		unsigned int low = MEMZONE_XEN + 1;
++		unsigned int high = zone_hi;
++
++		if ( memflags & MEMF_no_dma )
++			return NULL;
++
++	   if ( memflags & MEMF_only_low_mem )
++		   high = ZONE_4G;
++
++	   if ( memflags & MEMF_only_high_mem )
++		   low = ZONE_4G;
++
++		if ( (pg = alloc_heap_pages(low, high, order,
++								   memflags, d)) == NULL )
++			return NULL;
++	}
++#else
+     if ( (pg == NULL) &&
+          ((memflags & MEMF_no_dma) ||
+           ((pg = alloc_heap_pages(MEMZONE_XEN + 1, zone_hi, order,
+                                   memflags, d)) == NULL)) )
+          return NULL;
++#endif
+ 
+     if ( d && !(memflags & MEMF_no_owner) &&
+          assign_pages(d, pg, order, memflags) )
+diff --git a/xen/include/public/memory.h b/xen/include/public/memory.h
+index 29ec571..a836032 100644
+--- a/xen/include/public/memory.h
++++ b/xen/include/public/memory.h
+@@ -51,6 +51,12 @@
+ /* NUMA node to allocate from. */
+ #define XENMEMF_node(x)     (((x) + 1) << 8)
+ #define XENMEMF_get_node(x) ((((x) >> 8) - 1) & 0xffu)
++#ifdef ARM32_SEPAR_MEM_SPLIT
++/* Flag to populate physmap only from low 4GB memory space */
++#define XENMEMF_only_low_mem (1<<6)
++/* Flag to populate physmap only from over 4GB memory space */
++#define XENMEMF_only_high_mem (1<<7)
++#endif
+ /* Flag to populate physmap with populate-on-demand entries */
+ #define XENMEMF_populate_on_demand (1<<16)
+ /* Flag to request allocation only from the node specified */
+diff --git a/xen/include/xen/mm.h b/xen/include/xen/mm.h
+index 3cf646a..7699081 100644
+--- a/xen/include/xen/mm.h
++++ b/xen/include/xen/mm.h
+@@ -180,6 +180,12 @@ struct npfec {
+ #define  MEMF_exact_node  (1U<<_MEMF_exact_node)
+ #define _MEMF_no_owner    5
+ #define  MEMF_no_owner    (1U<<_MEMF_no_owner)
++#ifdef ARM32_SEPAR_MEM_SPLIT
++#define _MEMF_only_low_mem    6
++#define  MEMF_only_low_mem    (1U<<_MEMF_only_low_mem)
++#define _MEMF_only_high_mem   7
++#define  MEMF_only_high_mem   (1U<<_MEMF_only_high_mem)
++#endif
+ #define _MEMF_node        8
+ #define  MEMF_node_mask   ((1U << (8 * sizeof(nodeid_t))) - 1)
+ #define  MEMF_node(n)     ((((n) + 1) & MEMF_node_mask) << _MEMF_node)
+-- 
+1.9.1
+

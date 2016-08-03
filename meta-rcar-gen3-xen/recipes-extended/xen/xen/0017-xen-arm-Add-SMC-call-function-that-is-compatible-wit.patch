@@ -1,0 +1,60 @@
+From 4ae1bf85ec1cff304d86171b9ffc886fce5ebc7d Mon Sep 17 00:00:00 2001
+From: Volodymyr Babchuk <volodymyr.babchuk@globallogic.com>
+Date: Fri, 1 Jul 2016 19:00:48 +0300
+Subject: [PATCH 1/5] xen/arm: Add SMC call function that is compatible with
+ SMCCC
+
+ARM SMC Call Convention states, that there are 8 parameters and 4 return values
+for a SMC call.
+Code was adopted from Linux kernel's smccc-call.S
+
+Signed-off-by: Volodymyr Babchuk <volodymyr.babchuk@globallogic.com>
+---
+ xen/arch/arm/smc.S              | 16 ++++++++++++++++
+ xen/include/asm-arm/processor.h |  6 ++++++
+ 2 files changed, 22 insertions(+)
+
+diff --git a/xen/arch/arm/smc.S b/xen/arch/arm/smc.S
+index b8f1822..11ae0e0 100644
+--- a/xen/arch/arm/smc.S
++++ b/xen/arch/arm/smc.S
+@@ -19,3 +19,19 @@
+ ENTRY(call_smc)
+         smc   #0
+         ret
++
++
++#ifdef CONFIG_ARM_64
++/*
++ * void call_smc_ext(register_t a0, register_t a1, register_t a2,
++ *	  	     register_t a3, register_t a4, register_t a5,
++		     register_t a6, register_t a7, register_t res[4])
++ */
++ENTRY(call_smc_ext)
++	smc	#0
++	ldr	x4, [sp]
++	stp	x0, x1, [x4, #0]
++	stp	x2, x3, [x4, #16]
++	ret
++ENDPROC(call_smc_ext)
++#endif
+diff --git a/xen/include/asm-arm/processor.h b/xen/include/asm-arm/processor.h
+index 284ad6a..a87ac4a 100644
+--- a/xen/include/asm-arm/processor.h
++++ b/xen/include/asm-arm/processor.h
+@@ -647,6 +647,12 @@ void vcpu_regs_user_to_hyp(struct vcpu *vcpu,
+ int call_smc(register_t function_id, register_t arg0, register_t arg1,
+              register_t arg2);
+ 
++#ifdef CONFIG_ARM_64
++void call_smc_ext(register_t a0, register_t a1, register_t a2,
++                  register_t a3, register_t a4, register_t a5,
++                  register_t a6, register_t a7, register_t res[4]);
++#endif
++
+ #endif /* __ASSEMBLY__ */
+ #endif /* __ASM_ARM_PROCESSOR_H */
+ /*
+-- 
+2.8.3
+

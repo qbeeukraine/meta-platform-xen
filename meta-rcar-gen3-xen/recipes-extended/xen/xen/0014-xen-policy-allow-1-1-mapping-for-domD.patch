@@ -1,0 +1,27 @@
+From fb1990201775f290b76c4b9ce801a2020da4dd39 Mon Sep 17 00:00:00 2001
+From: Oleksandr Dmytryshyn <oleksandr.dmytryshyn@globallogic.com>
+Date: Fri, 4 Sep 2015 11:54:55 +0300
+Subject: [PATCH 3/5] xen: policy: allow 1:1 mapping for domD
+
+Change-Id: I1cbcda73d4605f550cd7557895147dd4093b4d96
+Signed-off-by: Oleksandr Dmytryshyn <oleksandr.dmytryshyn@globallogic.com>
+---
+ tools/flask/policy/policy/modules/xen/xen.te | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/tools/flask/policy/policy/modules/xen/xen.te b/tools/flask/policy/policy/modules/xen/xen.te
+index 50aa602..bc9eb76 100644
+--- a/tools/flask/policy/policy/modules/xen/xen.te
++++ b/tools/flask/policy/policy/modules/xen/xen.te
+@@ -87,6 +87,8 @@ allow dom0_t xen_t:version {
+ 
+ allow dom0_t xen_t:mmu memorymap;
+ 
++allow dom0_t domd_t:domain2 set_11_mapping;
++
+ # Allow dom0 to use these domctls on itself. For domctls acting on other
+ # domains, see the definitions of create_domain and manage_domain.
+ allow dom0_t dom0_t:domain {
+-- 
+1.9.1
+

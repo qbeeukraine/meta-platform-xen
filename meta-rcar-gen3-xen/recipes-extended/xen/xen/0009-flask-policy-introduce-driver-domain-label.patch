@@ -1,0 +1,92 @@
+From 90cc6c19a1716c5dedd3d35a7044a5e5930ac4ca Mon Sep 17 00:00:00 2001
+From: Andrii Tseglytskyi <andrii.tseglytskyi@globallogic.com>
+Date: Tue, 23 Dec 2014 14:58:32 +0200
+Subject: [PATCH] flask/policy: introduce driver domain label
+
+New label domd_t is introduced with almost the same privileges
+as domain 0. They are needed to allow hardware resorces management
+and event channels creation.
+
+Change-Id: I2160721338ac7c6d7847ce65c1fc007a4313be2b
+Signed-off-by: Andrii Tseglytskyi <andrii.tseglytskyi@globallogic.com>
+---
+ tools/flask/policy/policy/modules/xen/xen.te | 63 ++++++++++++++++++++++++++++
+ 1 file changed, 63 insertions(+)
+
+diff --git a/tools/flask/policy/policy/modules/xen/xen.te b/tools/flask/policy/policy/modules/xen/xen.te
+index fadb4cd..73ddd92 100644
+--- a/tools/flask/policy/policy/modules/xen/xen.te
++++ b/tools/flask/policy/policy/modules/xen/xen.te
+@@ -142,6 +142,69 @@ allow domain_type xen_t:xen2 pmu_use;
+ # Domain creation
+ #
+ ###############################################################################
++declare_singleton_domain(domd_t, mls_priv);
++allow domd_t xen_t:xen {
++	settime tbufcontrol readconsole clearconsole perfcontrol mtrr_add
++	mtrr_del mtrr_read microcode physinfo quirk writeconsole readapic
++	writeapic privprofile nonprivprofile kexec firmware sleep frequency
++	getidle debug getcpuinfo heap pm_op mca_op lockprof cpupool_op tmem_op
++	tmem_control getscheduler setscheduler
++};
++allow domd_t xen_t:xen2 {
++    resource_op
++    psr_cmt_op
++};
++allow domd_t xen_t:mmu memorymap;
++
++# Allow dom0 to use these domctls on itself. For domctls acting on other
++# domains, see the definitions of create_domain and manage_domain.
++allow domd_t domd_t:domain {
++	setvcpucontext max_vcpus setaffinity getaffinity getscheduler
++	getdomaininfo getvcpuinfo getvcpucontext setdomainmaxmem setdomainhandle
++	setdebugging hypercall settime setaddrsize getaddrsize trigger
++	getextvcpucontext setextvcpucontext getvcpuextstate setvcpuextstate
++	getpodtarget setpodtarget set_misc_info set_virq_handler
++};
++allow domd_t domd_t:domain2 {
++	set_cpuid gettsc settsc setscheduler set_max_evtchn set_vnumainfo get_vnumainfo psr_cmt_op
++};
++allow dom0_t domd_t:resource { add remove };
++
++# These permissions allow using the FLASK security server to compute access
++# checks locally, which could be used by a domain or service (such as xenstore)
++# that does not have its own security server to make access decisions based on
++# Xen's security policy.
++allow domd_t security_t:security {
++	compute_av compute_create compute_member compute_relabel compute_user
++};
++
++# Allow string/SID conversions (for "xl list -Z" and similar)
++allow domd_t security_t:security check_context;
++
++# Allow flask-label-pci to add and change labels
++allow domd_t security_t:security { add_ocontext del_ocontext };
++
++# Allow performance parameters of the security server to be tweaked
++allow domd_t security_t:security setsecparam;
++
++# Allow changing the security policy
++allow domd_t security_t:security { load_policy setenforce setbool };
++
++# Audit policy change events even when they are allowed
++auditallow domd_t security_t:security { load_policy setenforce setbool };
++
++admin_device(domd_t, device_t)
++admin_device(domd_t, irq_t)
++admin_device(domd_t, ioport_t)
++admin_device(domd_t, iomem_t)
++domain_comms(domd_t, domd_t)
++domain_self_comms(domd_t)
++domain_comms(dom0_t, domd_t)
++domain_comms(domd_t, domU_t)
++create_domain(dom0_t, domd_t)
++manage_domain(dom0_t, domd_t)
++manage_domain(domd_t, domU_t)
++migrate_domain_out(dom0_t, domd_t)
+ 
+ declare_domain(domU_t)
+ domain_self_comms(domU_t)
+-- 
+1.9.1
+

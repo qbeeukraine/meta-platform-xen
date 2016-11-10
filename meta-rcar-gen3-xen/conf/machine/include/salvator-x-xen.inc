@@ -2,9 +2,15 @@
 #@NAME: Salvator-X wth Xen machine
 #@DESCRIPTION: Machine configuration for running Salvator-X with Xen hypervisor
 
-require conf/machine/include/arm/arch-armv8.inc
+DEFAULTTUNE ?= "cortexa57-cortexa53"
+require conf/machine/include/tune-cortexa57-cortexa53.inc
 require conf/machine/include/${SOC_FAMILY}.inc
-require conf/machine/include/multilib.inc
+
+# 32BIT package install (default is disable)
+# This variables can be used only in multilib.
+USE_32BIT_PKGS ?= "0"
+USE_32BIT_WAYLAND ?= "0"
+USE_32BIT_MMP ?= "0"
 
 MACHINE_FEATURES = ""
 
@@ -28,7 +34,7 @@ UBOOT_MACHINE_r8a7795 = "r8a7795_salvator-x_defconfig"
 UBOOT_MACHINE_r8a7796 = "r8a7796_salvator-x_defconfig"
 
 # libdrm
-PREFERRED_VERSION_libdrm = "2.4.65"
+PREFERRED_VERSION_libdrm = "2.4.68"
 
 #xen
 PREFERRED_VERSION_xen = "4.7.0+git%"

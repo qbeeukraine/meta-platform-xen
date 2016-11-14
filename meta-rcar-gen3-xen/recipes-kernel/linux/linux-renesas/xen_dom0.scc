@@ -2,12 +2,6 @@ define KFEATURE_DESCRIPTION "Xen Kernel Support"
 define KFEATURE_COMPATIBILITY arch
 
 kconf non-hardware xen_dom0.cfg
-patch patches/0001-dt-bindings-add-bindings-for-optee.patch
-patch patches/0002-tee-generic-TEE-subsystem.patch
-patch patches/0003-tee-add-OP-TEE-driver.patch
-patch patches/0004-Documentation-tee-subsystem-and-op-tee-driver.patch
-patch patches/0005-v10-delta-tee-generic-TEE-subsystem.patch
-patch patches/0006-v10-delta-tee-add-OP-TEE-driver.patch
-patch patches/0007-clk-shmobile-Hide-clock-for-SCIF2.patch
-patch patches/0008-arm64-dts-renesas-Introduce-device-tree-for-Renesas-.patch
-patch patches/0009-arm64-dts-renesas-Adjust-device-tree-for-Renesas-Sal.patch
+patch patches/0001-clk-shmobile-Hide-clock-for-SCIF2.patch
+patch patches/0002-arm64-dts-renesas-Introduce-device-tree-for-Renesas-.patch
+patch patches/0003-arm64-dts-renesas-Adjust-device-tree-for-Renesas-Sal.patch

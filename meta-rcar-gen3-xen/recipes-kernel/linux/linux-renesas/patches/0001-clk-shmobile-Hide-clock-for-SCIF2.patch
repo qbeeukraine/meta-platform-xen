@@ -1,0 +1,29 @@
+From c9f1e1715612d73905a16c8c68a91f08f9de64e3 Mon Sep 17 00:00:00 2001
+From: Vitaliy Vasylskyy <vitaliy.vasylskyy@globallogic.com>
+Date: Fri, 9 Sep 2016 17:43:45 +0300
+Subject: [PATCH] clk:renesas: Hide clock for SCIF2
+
+On Renesas Salvaotor board with Xen SCIF2 is provided to hypervisor, so
+kernel should not manage SCIF2 clock.
+
+Signed-off-by: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+---
+ drivers/clk/renesas/r8a7795-cpg-mssr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/clk/renesas/r8a7795-cpg-mssr.c b/drivers/clk/renesas/r8a7795-cpg-mssr.c
+index 8eff657..8592dff 100644
+--- a/drivers/clk/renesas/r8a7795-cpg-mssr.c
++++ b/drivers/clk/renesas/r8a7795-cpg-mssr.c
+@@ -132,7 +132,7 @@ static const struct mssr_mod_clk r8a7795_mod_clks[] __initconst = {
+ 	DEF_MOD("sys-dmac2",		 217,	R8A7795_CLK_S3D1),
+ 	DEF_MOD("sys-dmac1",		 218,	R8A7795_CLK_S3D1),
+ 	DEF_MOD("sys-dmac0",		 219,	R8A7795_CLK_S3D1),
+-	DEF_MOD("scif2",		 310,	R8A7795_CLK_S3D4),
++	/*DEF_MOD("scif2",		 310,	R8A7795_CLK_S3D4),*/
+ 	DEF_MOD("sdif3",		 311,	R8A7795_CLK_SD3),
+ 	DEF_MOD("sdif2",		 312,	R8A7795_CLK_SD2),
+ 	DEF_MOD("sdif1",		 313,	R8A7795_CLK_SD1),
+-- 
+1.9.1
+

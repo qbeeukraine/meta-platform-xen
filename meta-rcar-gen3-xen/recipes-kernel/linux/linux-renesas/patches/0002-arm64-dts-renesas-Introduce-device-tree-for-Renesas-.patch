@@ -1,20 +1,21 @@
-From 4db951a4225878c1e30dda79ec5e3e318c723fa9 Mon Sep 17 00:00:00 2001
+From fd605cf9d81e289113a042ff32ade43319bd63e7 Mon Sep 17 00:00:00 2001
 From: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
 Date: Thu, 9 Jun 2016 14:26:13 +0300
-Subject: [PATCH 2/3] arm64:dts:renesas: Introduce device tree for Renesas
+Subject: [PATCH 2/2] arm64:dts:renesas: Introduce device tree for Renesas
  Salvator board with Xen
 
 Device tree is based on basic device tree for Renesas Salvator board.
 
 Signed-off-by: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+Signed-off-by: Iurii Mykhalskyi <iurii.mykhalskyi@globallogic.com>
 ---
  arch/arm64/boot/dts/renesas/Makefile               |    1 +
- .../boot/dts/renesas/r8a7795-salvator-x-dom0.dts   | 1059 ++++++++++++++++++++
- 2 files changed, 1060 insertions(+)
+ .../boot/dts/renesas/r8a7795-salvator-x-dom0.dts   | 1148 ++++++++++++++++++++
+ 2 files changed, 1149 insertions(+)
  create mode 100644 arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts
 
 diff --git a/arch/arm64/boot/dts/renesas/Makefile b/arch/arm64/boot/dts/renesas/Makefile
-index 9ce1890..6ebd1e5 100644
+index 17139f7..a31aba3 100644
 --- a/arch/arm64/boot/dts/renesas/Makefile
 +++ b/arch/arm64/boot/dts/renesas/Makefile
 @@ -1,5 +1,6 @@
@@ -26,10 +27,10 @@ index 9ce1890..6ebd1e5 100644
  clean-files	:= *.dtb
 diff --git a/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts b/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts
 new file mode 100644
-index 0000000..d94163c
+index 0000000..b9a67ec
 --- /dev/null
 +++ b/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts
-@@ -0,0 +1,1059 @@
+@@ -0,0 +1,1148 @@
 +/*
 + * Device Tree Source for the Salvator-X board
 + *
@@ -74,6 +75,8 @@ index 0000000..d94163c
 +	aliases {
 +		serial0 = &scif2;
 +		serial1 = &scif1;
++		serial2 = &scif3;
++		serial3 = &hscif3;
 +		ethernet0 = &avb;
 +	};
 +
@@ -108,6 +111,19 @@ index 0000000..d94163c
 +		#size-cells = <2>;
 +		ranges;
 +
++		/* device specific region for Lossy Decompression */
++		lossy_decompress: linux,lossy_decompress {
++			no-map;
++			reg = <0x00000000 0x54000000 0x0 0x03000000>;
++		};
++
++		/* For Audio DSP */
++		adsp_reserved: linux,adsp {
++			compatible = "shared-dma-pool";
++			reusable;
++			reg = <0x00000000 0x57000000 0x0 0x01000000>;
++		};
++
 +		/* global autoconfigured region for contiguous allocations */
 +		linux,cma {
 +			compatible = "shared-dma-pool";
@@ -126,12 +142,83 @@ index 0000000..d94163c
 +
 +	mmngr {
 +		compatible = "renesas,mmngr";
++		memory-region = <&lossy_decompress>;
++	};
++
++	mmngrbuf {
++		compatible = "renesas,mmngrbuf";
 +	};
 +
 +	x12_clk: x12_clk {
 +		compatible = "fixed-clock";
 +		#clock-cells = <0>;
 +		clock-frequency = <24576000>;
++	};
++
++	fixedregulator3v3: regulator@0 {
++		compatible = "regulator-fixed";
++		regulator-name = "fixed-3.3V";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-boot-on;
++		regulator-always-on;
++	};
++
++	fixedregulator1v8: regulator@1 {
++		compatible = "regulator-fixed";
++		regulator-name = "fixed-1.8V";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++		regulator-boot-on;
++		regulator-always-on;
++	};
++
++	vcc_sdhi0: regulator@2 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "SDHI0 Vcc";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++
++		gpio = <&gpio5 2 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++	};
++
++	vccq_sdhi0: regulator@3 {
++		compatible = "regulator-gpio";
++
++		regulator-name = "SDHI0 VccQ";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <3300000>;
++
++		gpios = <&gpio5 1 GPIO_ACTIVE_HIGH>;
++		gpios-states = <1>;
++		states = <3300000 1
++			  1800000 0>;
++	};
++
++	vcc_sdhi3: regulator@4 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "SDHI3 Vcc";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++
++		gpio = <&gpio3 15 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++	};
++
++	vccq_sdhi3: regulator@5 {
++		compatible = "regulator-gpio";
++
++		regulator-name = "SDHI3 VccQ";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <3300000>;
++
++		gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;
++		gpios-states = <1>;
++		states = <3300000 1
++			  1800000 0>;
 +	};
 +
 +	audio_clkout: audio_clkout {
@@ -307,94 +394,45 @@ index 0000000..d94163c
 +		};
 +	};
 +
-+	dclkin_p0: programmable_clock0 {
++	dclkin_p0: clock_out0 {
 +		compatible = "fixed-clock";
 +		#clock-cells = <0>;
 +		clock-frequency = <148500000>;
 +	};
 +
-+	dclkin1: x21-clock {
++	x21_clk: x21-clock {
 +		compatible = "fixed-clock";
 +		#clock-cells = <0>;
 +		clock-frequency = <33000000>;
 +	};
 +
-+	dclkin2: x22-clock {
++	x22_clk: x22-clock {
 +		compatible = "fixed-clock";
 +		#clock-cells = <0>;
 +		clock-frequency = <33000000>;
 +	};
 +
-+	dclkin_p3: programmable_clock1 {
++	dclkin_p3: clock_out1 {
 +		compatible = "fixed-clock";
 +		#clock-cells = <0>;
 +		clock-frequency = <108000000>;
 +	};
 +
-+	fixedregulator3v3: regulator@0 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "fixed-3.3V";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	fixedregulator1v8: regulator@1 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "fixed-1.8V";
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	vcc_sdhi0: regulator@2 {
++	vbus0_usb2: regulator-vbus0-usb2 {
 +		compatible = "regulator-fixed";
 +
-+		regulator-name = "SDHI0 Vcc";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
++		regulator-name = "USB20_VBUS0";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
 +
-+		gpio = <&gpio5 2 GPIO_ACTIVE_HIGH>;
++		gpio = <&gpio6 16 GPIO_ACTIVE_HIGH>;
 +		enable-active-high;
 +	};
 +
-+	vccq_sdhi0: regulator@3 {
-+		compatible = "regulator-gpio";
-+
-+		regulator-name = "SDHI0 VccQ";
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <3300000>;
-+
-+		gpios = <&gpio5 1 GPIO_ACTIVE_HIGH>;
-+		gpios-states = <1>;
-+		states = <3300000 1
-+			  1800000 0>;
-+	};
-+
-+	vcc_sdhi3: regulator@4 {
-+		compatible = "regulator-fixed";
-+
-+		regulator-name = "SDHI3 Vcc";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+
-+		gpio = <&gpio3 15 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	vccq_sdhi3: regulator@5 {
-+		compatible = "regulator-gpio";
-+
-+		regulator-name = "SDHI3 VccQ";
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <3300000>;
-+
-+		gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;
-+		gpios-states = <1>;
-+		states = <3300000 1
-+			  1800000 0>;
++	msiof_ref_clk: msiof-ref-clock {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <66666666>;
 +	};
 +};
 +
@@ -411,8 +449,11 @@ index 0000000..d94163c
 +};
 +
 +&du {
++	pinctrl-0 = <&du_pins>;
++	pinctrl-names = "default";
 +	status = "okay";
-+	backlight-pin = <&gpio6 7 GPIO_ACTIVE_HIGH>;
++
++	backlight = <&gpio6 7 GPIO_ACTIVE_HIGH>;
 +
 +	ports {
 +		port@0 {
@@ -442,137 +483,174 @@ index 0000000..d94163c
 +	clock-frequency = <16666666>;
 +};
 +
++&extalr_clk {
++	clock-frequency = <32768>;
++};
++
 +&pfc {
 +	pinctrl-0 = <&scif_clk_pins>;
 +	pinctrl-names = "default";
 +
 +	pwm1_pins: pwm1 {
-+		renesas,groups = "pwm1_a", "pwm1_b";
-+		renesas,function = "pwm1";
++		groups = "pwm1_a", "pwm1_b";
++		function = "pwm1";
 +	};
++
 +	pwm2_pins: pwm2 {
-+		renesas,groups = "pwm2_a", "pwm2_b";
-+		renesas,function = "pwm2";
++		groups = "pwm2_a", "pwm2_b";
++		function = "pwm2";
 +	};
 +
 +	scif1_pins: scif1 {
-+		renesas,groups = "scif1_data_a", "scif1_ctrl";
-+		renesas,function = "scif1";
++		groups = "scif1_data_a", "scif1_ctrl";
++		function = "scif1";
 +	};
 +	scif2_pins: scif2 {
-+		renesas,groups = "scif2_data_a";
-+		renesas,function = "scif2";
++		groups = "scif2_data_a";
++		function = "scif2";
++	};
++	scif3_pins: scif3 { /* TX: 1_11, RX: 1_8 */
++		groups = "scif3_data_b";
++		function = "scif3";
++	};
++	hscif3_pins: hscif3 { /* TX: 2_8, RX: 2_7 */
++		groups = "hscif3_data_d";
++		function = "hscif3";
 +	};
 +	scif_clk_pins: scif_clk {
-+		renesas,groups = "scif_clk_a";
-+		renesas,function = "scif_clk";
++		groups = "scif_clk_a";
++		function = "scif_clk";
 +	};
 +
 +	hscif1_pins: hscif1 {
-+		renesas,groups = "hscif1_data_a", "hscif1_ctrl_a";
-+		renesas,function = "hscif1";
++		groups = "hscif1_data_a", "hscif1_ctrl_a";
++		function = "hscif1";
 +	};
 +
 +	i2c2_pins: i2c2 {
-+		renesas,groups = "i2c2_a";
-+		renesas,function = "i2c2";
-+	};
-+
-+	usb0_pins: usb0 {
-+		renesas,groups = "usb0";
-+		renesas,function = "usb0";
-+	};
-+
-+	usb1_pins: usb1 {
-+		renesas,groups = "usb1";
-+		renesas,function = "usb1";
-+	};
-+
-+	usb2_pins: usb2 {
-+		renesas,groups = "usb2";
-+		renesas,function = "usb2";
++		groups = "i2c2_a";
++		function = "i2c2";
 +	};
 +
 +	avb_pins: avb {
-+		renesas,groups = "avb_mdc";
-+		renesas,function = "avb";
-+	};
-+
-+	msiof0_pins: spi1 {
-+		renesas,groups = "msiof0_clk", "msiof0_sync",
-+				"msiof0_rxd",  "msiof0_txd";
-+		renesas,function = "msiof0";
-+	};
-+
-+	msiof1_pins: spi2 {
-+		renesas,groups = "msiof1_clk_c", "msiof1_sync_c",
-+				"msiof1_rxd_c",  "msiof1_txd_c";
-+		renesas,function = "msiof1";
-+	};
-+
-+	msiof2_pins: spi3 {
-+		renesas,groups = "msiof2_clk_b", "msiof2_sync_b",
-+				"msiof2_rxd_b",  "msiof2_txd_b";
-+		renesas,function = "msiof2";
-+	};
-+
-+	msiof3_pins: spi4 {
-+		renesas,groups = "msiof3_clk_d", "msiof3_sync_d",
-+				"msiof3_rxd_d",  "msiof3_txd_d";
-+		renesas,function = "msiof3";
-+	};
-+
-+	sound_pins: sound {
-+		renesas,groups = "ssi01239_ctrl", "ssi0_data", "ssi1_data_a";
-+		renesas,function = "ssi";
-+	};
-+
-+	sound_clk_pins: sound_clk {
-+		renesas,groups = "audio_clk_a_a", "audio_clk_b_a", "audio_clk_c_a",
-+				 "audio_clkout_a", "audio_clkout3_a";
-+		renesas,function = "audio_clk";
++		groups = "avb_mdc";
++		function = "avb";
 +	};
 +
 +	sdhi0_pins_3v3: sd0_3v3 {
-+		renesas,groups = "sdhi0_data4", "sdhi0_ctrl";
-+		renesas,function = "sdhi0";
++		groups = "sdhi0_data4", "sdhi0_ctrl";
++		function = "sdhi0";
 +		power-source = <3300>;
 +	};
 +
 +	sdhi0_pins_1v8: sd0_1v8 {
-+		renesas,groups = "sdhi0_data4", "sdhi0_ctrl";
-+		renesas,function = "sdhi0";
++		groups = "sdhi0_data4", "sdhi0_ctrl";
++		function = "sdhi0";
 +		power-source = <1800>;
 +	};
 +
 +	sdhi3_pins_3v3: sd3_3v3 {
-+		renesas,groups = "sdhi3_data4", "sdhi3_ctrl";
-+		renesas,function = "sdhi3";
++		groups = "sdhi3_data4", "sdhi3_ctrl";
++		function = "sdhi3";
 +		power-source = <3300>;
 +	};
 +
 +	sdhi3_pins_1v8: sd3_1v8 {
-+		renesas,groups = "sdhi3_data4", "sdhi3_ctrl";
-+		renesas,function = "sdhi3";
++		groups = "sdhi3_data4", "sdhi3_ctrl";
++		function = "sdhi3";
 +		power-source = <1800>;
 +	};
 +
 +	mmc0_pins_1v8: mmc0_1v8 {
-+		renesas,groups = "sdhi2_data8", "sdhi2_ctrl";
-+		renesas,function = "sdhi2";
++		groups = "sdhi2_data8", "sdhi2_ctrl";
++		function = "sdhi2";
 +		power-source = <1800>;
++	};
++
++	msiof0_pins: spi1 {
++		groups = "msiof0_clk", "msiof0_sync",
++				"msiof0_rxd",  "msiof0_txd";
++		function = "msiof0";
++	};
++
++	msiof1_pins: spi2 {
++		groups = "msiof1_clk_c", "msiof1_sync_c",
++				"msiof1_rxd_c",  "msiof1_txd_c";
++		function = "msiof1";
++	};
++
++	msiof2_pins: spi3 {
++		groups = "msiof2_clk_b", "msiof2_sync_b",
++				"msiof2_rxd_b",  "msiof2_txd_b";
++		function = "msiof2";
++	};
++
++	msiof3_pins: spi4 {
++		groups = "msiof3_clk_d", "msiof3_sync_d",
++				"msiof3_rxd_d",  "msiof3_txd_d";
++		function = "msiof3";
++	};
++
++	sound_pins: sound {
++		groups = "ssi01239_ctrl", "ssi0_data", "ssi1_data_a";
++		function = "ssi";
++	};
++
++	sound_clk_pins: sound_clk {
++		groups = "audio_clk_a_a", "audio_clk_b_a", "audio_clk_c_a",
++			 "audio_clkout_a", "audio_clkout3_a";
++		function = "audio_clk";
++	};
++
++	usb0_pins: usb0 {
++		groups = "usb0";
++		function = "usb0";
++	};
++
++	usb1_pins: usb1 {
++		groups = "usb1";
++		function = "usb1";
++	};
++
++	usb2_pins: usb2 {
++		groups = "usb2";
++		function = "usb2";
++	};
++
++	du_pins: du {
++		groups = "du_rgb888", "du_sync", "du_clk_out_0", "du_disp";
++		function = "du";
 +	};
 +};
 +
 +&adsp {
 +	status = "okay";
++	memory-region = <&adsp_reserved>;
 +};
 +
 +&scif1 {
 +	pinctrl-0 = <&scif1_pins>;
 +	pinctrl-names = "default";
++
++	uart-has-rtscts;
 +	/* Please use exclusively to the hscif1 node */
 +	status = "okay";
++};
++
++&scif3 {
++	pinctrl-0 = <&scif3_pins>;
++	pinctrl-names = "default";
++	/* Please use exclusively to the pwm1 node */
++	/* status = "okay"; */
++};
++
++/* SCIF3 TX -> HSCIF3 RX, HSCIF3 TX -> SCIF3 RX */
++
++&hscif3 {
++	pinctrl-0 = <&hscif3_pins>;
++	pinctrl-names = "default";
++	/* Please use exclusively to the pwm1 node */
++	/* status = "okay"; */
 +};
 +
 +&scif2 {
@@ -592,52 +670,6 @@ index 0000000..d94163c
 +	pinctrl-names = "default";
 +	/* Please use exclusively to the scif1 node */
 +	/* status = "okay"; */
-+};
-+
-+&usb2_phy0 {
-+	status = "okay";
-+	pinctrl-0 = <&usb0_pins>;
-+	pinctrl-names = "default";
-+};
-+
-+&usb2_phy1 {
-+	status = "okay";
-+	pinctrl-0 = <&usb1_pins>;
-+	pinctrl-names = "default";
-+};
-+
-+&usb2_phy2 {
-+	status = "okay";
-+	pinctrl-0 = <&usb2_pins>;
-+	pinctrl-names = "default";
-+};
-+
-+&ehci0 {
-+	status = "okay";
-+};
-+
-+&ehci1 {
-+	status = "okay";
-+};
-+
-+&ehci2 {
-+	status = "okay";
-+};
-+
-+&ohci0 {
-+	status = "okay";
-+};
-+
-+&ohci1 {
-+	status = "okay";
-+};
-+
-+&ohci2 {
-+	status = "okay";
-+};
-+
-+&xhci0 {
-+	status = "okay";
 +};
 +
 +&i2c2 {
@@ -728,12 +760,12 @@ index 0000000..d94163c
 +		compatible = "idt,5p49v5923a";
 +		reg = <0x6a>;
 +
-+		dclkin0: 5p49v5923a_clk1@6a {
++		programable_clk0: 5p49v5923a_clk1@6a {
 +			#clock-cells = <0>;
 +			clocks = <&dclkin_p0>;
 +		};
 +
-+		dclkin3: 5p49v5923a_clk2@6a {
++		programable_clk1: 5p49v5923a_clk2@6a {
 +			#clock-cells = <0>;
 +			clocks = <&dclkin_p3>;
 +		};
@@ -750,6 +782,7 @@ index 0000000..d94163c
 +	/* audio_clkout0/1/2/3 */
 +	#clock-cells = <1>;
 +	clock-frequency = <11289600>;
++	clkout-lr-synchronous;
 +
 +	status = "okay";
 +
@@ -765,6 +798,8 @@ index 0000000..d94163c
 +		 <&cpg CPG_MOD 1026>, <&cpg CPG_MOD 1027>,
 +		 <&cpg CPG_MOD 1028>, <&cpg CPG_MOD 1029>,
 +		 <&cpg CPG_MOD 1030>, <&cpg CPG_MOD 1031>,
++		 <&cpg CPG_MOD 1021>, <&cpg CPG_MOD 1020>,
++		 <&cpg CPG_MOD 1021>, <&cpg CPG_MOD 1020>,
 +		 <&cpg CPG_MOD 1019>, <&cpg CPG_MOD 1018>,
 +		 <&audio_clk_a>, <&cs2000>,
 +		 <&audio_clk_c>,
@@ -779,6 +814,43 @@ index 0000000..d94163c
 +};
 +
 +&sata {
++	status = "okay";
++};
++
++&sdhi0 {
++	pinctrl-0 = <&sdhi0_pins_3v3>;
++	pinctrl-1 = <&sdhi0_pins_1v8>;
++	pinctrl-names = "default", "state_uhs";
++
++	vmmc-supply = <&vcc_sdhi0>;
++	vqmmc-supply = <&vccq_sdhi0>;
++	cd-gpios = <&gpio3 12 GPIO_ACTIVE_LOW>;
++	wp-gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>;
++	bus-width = <4>;
++	status = "okay";
++};
++
++&sdhi3 {
++	pinctrl-0 = <&sdhi3_pins_3v3>;
++	pinctrl-1 = <&sdhi3_pins_1v8>;
++	pinctrl-names = "default", "state_uhs";
++
++	vmmc-supply = <&vcc_sdhi3>;
++	vqmmc-supply = <&vccq_sdhi3>;
++	cd-gpios = <&gpio4 15 GPIO_ACTIVE_LOW>;
++	wp-gpios = <&gpio4 16 GPIO_ACTIVE_HIGH>;
++	bus-width = <4>;
++	status = "okay";
++};
++
++&mmc0 {
++	pinctrl-0 = <&mmc0_pins_1v8>;
++	pinctrl-1 = <&mmc0_pins_1v8>;
++	pinctrl-names = "default", "state_uhs";
++
++	vmmc-supply = <&fixedregulator3v3>;
++	vqmmc-supply = <&fixedregulator1v8>;
++	bus-width = <8>;
 +	status = "okay";
 +};
 +
@@ -817,23 +889,77 @@ index 0000000..d94163c
 +	phy-int-gpio = <&gpio2 11 GPIO_ACTIVE_LOW>;
 +
 +	phy0: ethernet-phy@0 {
-+		rxc-skew-ps = <900>;
-+		rxdv-skew-ps = <0>;
-+		rxd0-skew-ps = <0>;
-+		rxd1-skew-ps = <0>;
-+		rxd2-skew-ps = <0>;
-+		rxd3-skew-ps = <0>;
-+		txc-skew-ps = <900>;
-+		txen-skew-ps = <0>;
-+		txd0-skew-ps = <0>;
-+		txd1-skew-ps = <0>;
-+		txd2-skew-ps = <0>;
-+		txd3-skew-ps = <0>;
++		rxc-skew-ps = <1500>;
++		rxdv-skew-ps = <420>; /* default */
++		rxd0-skew-ps = <420>; /* default */
++		rxd1-skew-ps = <420>; /* default */
++		rxd2-skew-ps = <420>; /* default */
++		rxd3-skew-ps = <420>; /* default */
++		txc-skew-ps = <900>; /* default */
++		txen-skew-ps = <420>; /* default */
++		txd0-skew-ps = <420>; /* default */
++		txd1-skew-ps = <420>; /* default */
++		txd2-skew-ps = <420>; /* default */
++		txd3-skew-ps = <420>; /* default */
 +		reg = <0>;
 +		interrupt-parent = <&gpio2>;
 +		interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
 +		max-speed = <100>;
 +	};
++};
++
++&xhci0 {
++	status = "okay";
++};
++
++&usb2_phy0 {
++	pinctrl-0 = <&usb0_pins>;
++	pinctrl-names = "default";
++
++	vbus-supply = <&vbus0_usb2>;
++	status = "okay";
++};
++
++&usb2_phy1 {
++	pinctrl-0 = <&usb1_pins>;
++	pinctrl-names = "default";
++
++	status = "okay";
++};
++
++&usb2_phy2 {
++	pinctrl-0 = <&usb2_pins>;
++	pinctrl-names = "default";
++
++	status = "okay";
++};
++
++&hsusb {
++	status = "okay";
++};
++
++&ehci0 {
++	status = "okay";
++};
++
++&ehci1 {
++	status = "okay";
++};
++
++&ehci2 {
++	status = "okay";
++};
++
++&ohci0 {
++	status = "okay";
++};
++
++&ohci1 {
++	status = "okay";
++};
++
++&ohci2 {
++	status = "okay";
 +};
 +
 +&msiof0 {
@@ -896,6 +1022,7 @@ index 0000000..d94163c
 +};
 +
 +&pcie_bus_clk {
++	clock-frequency = <100000000>;
 +	status = "okay";
 +};
 +
@@ -951,43 +1078,6 @@ index 0000000..d94163c
 +			};
 +		};
 +	};
-+};
-+
-+&sdhi0 {
-+	pinctrl-0 = <&sdhi0_pins_3v3>;
-+	pinctrl-1 = <&sdhi0_pins_3v3>;
-+	pinctrl-2 = <&sdhi0_pins_1v8>;
-+	pinctrl-names = "default", "3v3", "1v8";
-+
-+	vmmc-supply = <&vcc_sdhi0>;
-+	vqmmc-supply = <&vccq_sdhi0>;
-+	cd-gpios = <&gpio3 12 GPIO_ACTIVE_LOW>;
-+	wp-gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>;
-+	status = "okay";
-+};
-+
-+&sdhi3 {
-+	pinctrl-0 = <&sdhi3_pins_3v3>;
-+	pinctrl-1 = <&sdhi3_pins_3v3>;
-+	pinctrl-2 = <&sdhi3_pins_1v8>;
-+	pinctrl-names = "default", "3v3", "1v8";
-+
-+	vmmc-supply = <&vcc_sdhi3>;
-+	vqmmc-supply = <&vccq_sdhi3>;
-+	cd-gpios = <&gpio4 15 GPIO_ACTIVE_LOW>;
-+	wp-gpios = <&gpio4 16 GPIO_ACTIVE_HIGH>;
-+	status = "okay";
-+};
-+
-+&mmc0 {
-+	pinctrl-0 = <&mmc0_pins_1v8>;
-+	pinctrl-1 = <&mmc0_pins_1v8>;
-+	pinctrl-names = "default", "1v8";
-+
-+	vmmc-supply = <&fixedregulator3v3>;
-+	vqmmc-supply = <&fixedregulator1v8>;
-+	bus-width = <8>;
-+	status = "okay";
 +};
 +
 +&csi2_40 {
@@ -1090,5 +1180,5 @@ index 0000000..d94163c
 +	status = "okay";
 +};
 -- 
-1.9.1
+2.10.2
 

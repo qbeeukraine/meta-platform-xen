@@ -1,0 +1,79 @@
+From 383d62099c61f0d6cffd73dd2da462ecefedafb8 Mon Sep 17 00:00:00 2001
+From: Iurii Mykhalskyi <iurii.mykhalskyi@globallogic.com>
+Date: Tue, 15 Nov 2016 20:24:16 +0200
+Subject: [PATCH 5/5] arm64: dts: renesas: HACK: Remove cma pools
+
+Signed-off-by: Iurii Mykhalskyi <iurii.mykhalskyi@globallogic.com>
+---
+ .../boot/dts/renesas/r8a7795-salvator-x-dom0.dts   | 24 +++++++++++-----------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts b/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts
+index 4db41d7..28630e0 100644
+--- a/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts
++++ b/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts
+@@ -118,38 +118,38 @@
+ 		ranges;
+ 
+ 		/* device specific region for Lossy Decompression */
+-		lossy_decompress: linux,lossy_decompress {
++		/*lossy_decompress: linux,lossy_decompress {
+ 			no-map;
+ 			reg = <0x00000000 0x54000000 0x0 0x03000000>;
+-		};
++		};*/
+ 
+ 		/* For Audio DSP */
+-		adsp_reserved: linux,adsp {
++		/*adsp_reserved: linux,adsp {
+ 			compatible = "shared-dma-pool";
+ 			reusable;
+ 			reg = <0x00000000 0x57000000 0x0 0x01000000>;
+-		};
++		};*/
+ 
+ 		/* global autoconfigured region for contiguous allocations */
+-		linux,cma {
++		/*linux,cma {
+ 			compatible = "shared-dma-pool";
+ 			reusable;
+ 			reg = <0x00000000 0x58000000 0x0 0x18000000>;
+ 			linux,cma-default;
+-		};
++		};*/
+ 
+ 		/* device specific region for contiguous allocations */
+-		linux,multimedia {
++		/*linux,multimedia {
+ 			compatible = "shared-dma-pool";
+ 			reusable;
+ 			reg = <0x00000000 0x70000000 0x0 0x10000000>;
+-		};
++		};*/
+ 	};
+ 
+-	mmngr {
++	/*mmngr {
+ 		compatible = "renesas,mmngr";
+ 		memory-region = <&lossy_decompress>;
+-	};
++	};*/
+ 
+ 	mmngrbuf {
+ 		compatible = "renesas,mmngrbuf";
+@@ -629,10 +629,10 @@
+ 	};
+ };
+ 
+-&adsp {
++/*&adsp {
+ 	status = "okay";
+ 	memory-region = <&adsp_reserved>;
+-};
++};*/
+ 
+ &scif1 {
+ 	pinctrl-0 = <&scif1_pins>;
+-- 
+2.10.2
+

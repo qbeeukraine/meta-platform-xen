@@ -18,6 +18,7 @@ SRC_URI += "\
     file://0003-HACK-Fix-compilation-issues.patch \
     file://0004-Enable-XSM.patch \
     file://0005-xen-arm-Force-to-allocate-Dom0-only-in-low-memory.patch \
+    file://0006-Do-no-trap-smc-instructions.patch \
 "
 
 EXTRA_OEMAKE += " CONFIG_HAS_SCIF=y debug=y CONFIG_EARLY_PRINTK=salvator CONFIG_QEMU_XEN=n"

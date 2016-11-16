@@ -1,0 +1,25 @@
+From ebd8ef217d7d1bfdf26a869feff99cf146c41451 Mon Sep 17 00:00:00 2001
+From: Oleksandr Tyshchenko <oleksandr.tyshchenko@globallogic.com>
+Date: Tue, 16 Aug 2016 17:03:20 +0300
+Subject: [PATCH] arm: Don't touch memory node from full U-Boot in case of CONFIG_XEN
+
+Signed-off-by: Oleksandr Tyshchenko <oleksandr.tyshchenko@globallogic.com>
+---
+
+diff --git a/arch/arm/lib/bootm-fdt.c b/arch/arm/lib/bootm-fdt.c
+index 7677358..9a1d843 100644
+--- a/arch/arm/lib/bootm-fdt.c
++++ b/arch/arm/lib/bootm-fdt.c
+@@ -24,6 +24,7 @@
+ 
+ DECLARE_GLOBAL_DATA_PTR;
+ 
++#if defined(CONFIG_XEN)
+ int arch_fixup_fdt(void *blob)
+ {
+ 	bd_t *bd = gd->bd;
+@@ -50,3 +51,4 @@
+ #endif
+ 	return ret;
+ }
++#endif

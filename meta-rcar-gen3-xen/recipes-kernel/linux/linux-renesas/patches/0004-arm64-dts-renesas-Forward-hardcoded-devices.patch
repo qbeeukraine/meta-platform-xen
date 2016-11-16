@@ -1,0 +1,42 @@
+From 6de604720ee739f81a429fe3c98ad364236140f3 Mon Sep 17 00:00:00 2001
+From: Iurii Mykhalskyi <iurii.mykhalskyi@globallogic.com>
+Date: Tue, 15 Nov 2016 20:21:29 +0200
+Subject: [PATCH 4/5] arm64: dts: renesas: Forward hardcoded devices
+
+Some SoC device adresses are hardcoded in board specific C files,
+not in DTS, so Xen doesn't know about them - we have to create simple
+nodes those devices to allow Dom0 access to its memory.
+
+Signed-off-by: Iurii Mykhalskyi <iurii.mykhalskyi@globallogic.com>
+---
+ arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts b/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts
+index cacbe7c..4db41d7 100644
+--- a/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts
++++ b/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts
+@@ -77,6 +77,20 @@
+ 		cpu_on = <2>;
+ 	};
+ 
++	soc {
++		avs: avs@e60a0000 {
++			 reg = <0 0xe60a0000 0 0x1000>;
++		};
++
++		rst: rst@e6160000 {
++			 reg = <0 0xe6160000 0 0x1000>;
++		};
++
++		pll: pll@fff00000 {
++			 reg = <0 0xfff00000 0 0x1000>;
++		};
++	};
++
+ 	memory@48000000 {
+ 		device_type = "memory";
+ 		/* first 128MB is reserved for secure area. */
+-- 
+2.10.2
+

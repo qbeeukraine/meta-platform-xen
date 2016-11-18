@@ -3,10 +3,8 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 DEPENDS += "u-boot-mkimage-native systemd"
 
 PACKAGECONFIG ?= " \
-    sdl \
     xsm \
     ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'systemd', '', d)} \
-    ${@bb.utils.contains('XEN_TARGET_ARCH', 'x86_64', 'hvm', '', d)} \
     "
 
 XEN_REL="4.7"
@@ -19,12 +17,14 @@ SRC_URI += "\
     file://0002-char-scif-Add-Renesas-Salvator-X-board-support.patch \
     file://0003-HACK-Fix-compilation-issues.patch \
     file://0004-Enable-XSM.patch \
-    file://0005-Hack.patch \
+    file://0005-xen-arm-Force-to-allocate-Dom0-only-in-low-memory.patch \
 "
-EXTRA_OEMAKE += " CONFIG_HAS_SCIF=y debug=y CONFIG_EARLY_PRINTK=salvator CONFIG_QEMU_XEN=n ARM32_SEPAR_MEM_SPLIT=y"
+
+EXTRA_OEMAKE += " CONFIG_HAS_SCIF=y debug=y CONFIG_EARLY_PRINTK=salvator CONFIG_QEMU_XEN=n"
 
 PACKAGES += "\
     ${PN}-livepatch \
+    ${PN}-efi \
     "
 
 RDEPENDS_${PN}-base += "\
@@ -52,9 +52,10 @@ FILES_${PN}-staticdev += "\
     ${exec_prefix}/lib64/libxenvchan.a \
     "
 
-FILES_${PN}-libxencall-dev = "${exec_prefix}/lib64/libxencall.so"
-
-FILES_${PN}-efi = ""
+FILES_${PN}-efi = "\
+    ${exec_prefix}/lib64 \
+    ${exec_prefix}/lib64/xen* \
+    "
 
 RDEPENDS_${PN}-efi = " \
     bash \

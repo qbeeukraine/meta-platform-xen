@@ -1,7 +1,13 @@
 From 3e1a4ef7099dcb96b0918697584d83072ac233de Mon Sep 17 00:00:00 2001
 From: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
 Date: Wed, 22 Jun 2016 17:28:18 +0300
-Subject: [PATCH] Hack
+Subject: [PATCH] xen: arm: Force to allocate Dom0 only in low memory
+
+On board that has memory mapped over 4GB 64bit Xen may allocate
+Dom0 memory from over 4GB space. But some of those boards
+doesn't has 48bit DMA controller and some device drivers
+might not work properly.
+This patch force to allocate Dom0 only in low memory.
 
 Signed-off-by: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
 ---

@@ -3,7 +3,9 @@ OpenEmbedded/Yocto BSP layer for Xen on Renesas Electronics's SoCs
 This layer provides support for Xen on Renesas Electronics's platforms for use with
 OpenEmbedded and/or Yocto.
 
-Layer maintainers: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+Layer maintainers:
+    Iurii Mykhalskyi <iurii.mykhalskyi@globallogic.com>
+    Iurii Konovalenko <iurii.konovalenko@globallogic.com>
 
 Supported Boards/Machines
 =========================
@@ -18,5 +20,6 @@ Please see README in the layer directory about the description of the board.
 
 Original BSP image
 =========================
-The meta-renesas layer provides original BSP image. The following 
+The meta-renesas layer provides original BSP image. The following
+    * xen-core-image
     * xen-image-weston

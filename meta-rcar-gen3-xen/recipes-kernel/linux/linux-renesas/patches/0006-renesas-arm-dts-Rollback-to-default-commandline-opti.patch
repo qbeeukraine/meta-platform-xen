@@ -1,0 +1,26 @@
+From 7f724914b0611f729567a6a4bff9fe3a8594c316 Mon Sep 17 00:00:00 2001
+From: Iurii Mykhalskyi <iurii.mykhalskyi@globallogic.com>
+Date: Mon, 21 Nov 2016 18:36:34 +0200
+Subject: [PATCH 6/6] renesas:arm:dts: Rollback to default commandline options
+
+Signed-off-by: Iurii Mykhalskyi <iurii.mykhalskyi@globallogic.com>
+---
+ arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts b/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts
+index 28630e0..fa3ece4 100644
+--- a/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts
++++ b/arch/arm64/boot/dts/renesas/r8a7795-salvator-x-dom0.dts
+@@ -48,7 +48,7 @@
+ 	};
+ 
+ 	chosen {
+-		xen,dom0-bootargs = "console=hvc0 root=/dev/mmcblk1p1 rw rootwait rootfstype=ext4 ignore_loglevel";
++		xen,dom0-bootargs = "console=hvc0 rw root=/dev/nfs ip=dhcp ignore_loglevel";
+ 
+ 		modules {
+ 			#address-cells = <2>;
+-- 
+2.10.2
+

@@ -7,3 +7,4 @@ patch patches/0002-arm64-dts-renesas-Introduce-device-tree-for-Renesas-.patch
 patch patches/0003-arm64-dts-renesas-Adjust-device-tree-for-Renesas-Sal.patch
 patch patches/0004-arm64-dts-renesas-Forward-hardcoded-devices.patch
 patch patches/0005-arm64-dts-renesas-HACK-Remove-cma-pools.patch
+patch patches/0006-renesas-arm-dts-Rollback-to-default-commandline-opti.patch

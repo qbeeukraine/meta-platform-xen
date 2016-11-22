@@ -1,0 +1,29 @@
+From 68b8e1b7e6d7b17749ed31b1c0220e8b76bebf14 Mon Sep 17 00:00:00 2001
+From: Iurii Mykhalskyi <iurii.mykhalskyi@globallogic.com>
+Date: Tue, 22 Nov 2016 20:31:59 +0200
+Subject: [PATCH] libxl: Hack: fix compilation on arm64
+
+Due to build issues during compilation on arm64 platform -
+treat is as platform with no acpi support
+
+Signed-off-by: Iurii Mykhalskyi <iurii.mykhalskyi@globallogic.com>
+---
+ tools/libxl/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/libxl/Makefile b/tools/libxl/Makefile
+index af0a3ad..f582f57 100644
+--- a/tools/libxl/Makefile
++++ b/tools/libxl/Makefile
+@@ -91,7 +91,7 @@ acpi:
+ LIBXL_OBJS-$(CONFIG_X86) += libxl_cpuid.o libxl_x86.o libxl_psr.o libxl_x86_acpi.o
+ LIBXL_OBJS-$(CONFIG_ARM) += libxl_nocpuid.o libxl_arm.o libxl_libfdt_compat.o
+ ifeq ($(CONFIG_ARM_64),y)
+-LIBXL_OBJS-y += libxl_arm_acpi.o dsdt_anycpu_arm.o
++LIBXL_OBJS-y += libxl_arm_no_acpi.o
+ dsdt_anycpu_arm.c:
+ 	$(MAKE) -C $(ACPI_PATH) ACPI_BUILD_DIR=$(CURDIR)
+ else
+-- 
+2.10.2
+

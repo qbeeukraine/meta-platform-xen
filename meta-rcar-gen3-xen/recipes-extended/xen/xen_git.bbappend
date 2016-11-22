@@ -20,6 +20,7 @@ SRC_URI = "\
 
 SRC_URI += "\
     file://0001-arm64-renesas-Introduce-early-console-for-Salvator-X.patch \
+    file://0002-libxl-Hack-fix-compilation-on-arm64.patch \
     file://0003-HACK-Fix-compilation-issues.patch \
     file://0004-Enable-XSM.patch \
     file://0005-xen-arm-Force-to-allocate-Dom0-only-in-low-memory.patch \

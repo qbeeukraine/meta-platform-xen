@@ -7,21 +7,26 @@ PACKAGECONFIG ?= " \
     ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'systemd', '', d)} \
     "
 
-XEN_REL="4.7"
-SRCREV = "c2a17869d5dcd845d646bf4db122cad73596a2be"
+XEN_REL="4.8"
+SRCREV = "d4e202c39f0e464dfcec0e28f56725d516e190c6"
 
-FLASK_POLICY_FILE="xenpolicy-4.7.0-rc"
+FLASK_POLICY_FILE="xenpolicy-4.8.0-rc"
+
+LIC_FILES_CHKSUM="file://COPYING;md5=bbb4b1bdc2c3b6743da3c39d03249095"
+
+SRC_URI = "\
+    git://xenbits.xen.org/xen.git;branch=staging \
+"
 
 SRC_URI += "\
     file://0001-arm64-renesas-Introduce-early-console-for-Salvator-X.patch \
-    file://0002-char-scif-Add-Renesas-Salvator-X-board-support.patch \
     file://0003-HACK-Fix-compilation-issues.patch \
     file://0004-Enable-XSM.patch \
     file://0005-xen-arm-Force-to-allocate-Dom0-only-in-low-memory.patch \
     file://0006-Do-no-trap-smc-instructions.patch \
 "
 
-EXTRA_OEMAKE += " CONFIG_HAS_SCIF=y debug=y CONFIG_EARLY_PRINTK=salvator CONFIG_QEMU_XEN=n"
+EXTRA_OEMAKE += " CONFIG_HAS_SCIF=y CONFIG_DEBUG=y CONFIG_EARLY_PRINTK=salvator CONFIG_QEMU_XEN=n"
 
 PACKAGES += "\
     ${PN}-livepatch \
@@ -62,6 +67,23 @@ RDEPENDS_${PN}-efi = " \
     bash \
     python \
     "
+
+SYSTEMD_SERVICE_${PN}-xencommons = " \
+    proc-xen.mount \
+    var-lib-xenstored.mount \
+    xen-qemu-dom0-disk-backend.service \
+    xenconsoled.service \
+    xen-init-dom0.service \
+    xenstored.service \
+    "
+
+FILES_${PN}-devd += "\
+    ${systemd_unitdir}/system/xendriverdomain.service \
+    "
+
+FILES_${PN}-scripts-common += "\
+   ${sysconfdir}/xen/scripts/launch-xenstore \
+   "
 
 do_deploy_append () {
     if [ -f ${D}/boot/xen ]; then

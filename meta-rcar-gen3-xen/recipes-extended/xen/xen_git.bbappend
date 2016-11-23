@@ -23,7 +23,7 @@ SRC_URI += "\
     file://0002-libxl-Hack-fix-compilation-on-arm64.patch \
     file://0003-HACK-Fix-compilation-issues.patch \
     file://0004-Enable-XSM.patch \
-    file://0005-xen-arm-Force-to-allocate-Dom0-only-in-low-memory.patch \
+    file://0005-xen-arm-domain_build-allocate-lowmem-for-dom0-as-muc.patch \
     file://0006-Do-no-trap-smc-instructions.patch \
 "
 
